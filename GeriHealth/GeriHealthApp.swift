@@ -40,8 +40,21 @@ struct GeriHealthApp: App {
 
     var body: some Scene {
         WindowGroup {
-            HomeView()
+            RootView()
         }
         .modelContainer(sharedModelContainer)
+    }
+}
+
+/// A minimal root router that decides whether to show onboarding or the main app
+private struct RootView: View {
+    @Query private var users: [UserModel]
+    
+    var body: some View {
+        if users.first == nil {
+            HomeBoardingView()
+        } else {
+            HomeView()
+        }
     }
 }
