@@ -12,7 +12,7 @@ import FoundationModels
 import CoreML
 import FirebaseCore
 import FirebaseAI
-
+import AVFoundation
 
 struct DrugScanView: View {
     @Environment(\.modelContext) private var modelContext
@@ -22,6 +22,10 @@ struct DrugScanView: View {
     @State private var isShowingCamera = false
     @State private var medicationName = ""
     @State private var medicationData = ""
+    
+    // Text-to-Speech
+    @State private var synthesizer = AVSpeechSynthesizer()
+    @State private var isPaused = false
     
     var body: some View {
         NavigationStack {
@@ -47,8 +51,31 @@ struct DrugScanView: View {
                     
                     Text("General Info")
                         .font(.headline)
+                    
+                    // TTS controls
+                    HStack(spacing: 16) {
+                        Button {
+                            handleSpeakButton()
+                        } label: {
+                            Label(speakButtonTitle, systemImage: speakButtonSystemImage)
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(medicationData.trimmingCharacters(in: .newlines).isEmpty)
+                        
+                        Button {
+                            stopSpeaking()
+                        } label: {
+                            Label("Stop", systemImage: "stop.fill")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(!synthesizer.isSpeaking && !isPaused)
+                    }
+                    .padding(.horizontal)
+                    
                     TextEditor(text: $medicationData)
-                        .frame(height: 200)
+                        .frame(height: 150)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .overlay(
                             RoundedRectangle(cornerRadius: 12)
@@ -117,8 +144,64 @@ struct DrugScanView: View {
                     }
                 )
             }
+            .onDisappear {
+                // Ensure speech stops when leaving the screen
+                stopSpeaking()
+            }
         }
         
+    }
+    
+    
+    private var speakButtonTitle: String {
+        if synthesizer.isSpeaking && !isPaused { return "Pause" }
+        if isPaused { return "Resume" }
+        return "Speak"
+    }
+    
+    private var speakButtonSystemImage: String {
+        if synthesizer.isSpeaking && !isPaused { return "pause.fill" }
+        if isPaused { return "play.fill" }
+        return "speaker.wave.2.fill"
+    }
+    
+    private func handleSpeakButton() {
+        if synthesizer.isSpeaking && !isPaused {
+            synthesizer.pauseSpeaking(at: .immediate)
+            isPaused = true
+        } else if isPaused {
+            synthesizer.continueSpeaking()
+            isPaused = false
+        } else {
+            speakMedication()
+        }
+    }
+    
+    private func speakMedication() {
+        let text = medicationData.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        
+        // Stop any ongoing speech before starting new
+        if synthesizer.isSpeaking {
+            synthesizer.stopSpeaking(at: .immediate)
+        }
+        isPaused = false
+        
+        let utterance = AVSpeechUtterance(string: text)
+        // Configure voice for US English and comfortable rate for elderly users
+        utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
+        utterance.rate = AVSpeechUtteranceDefaultSpeechRate * 0.8
+        utterance.pitchMultiplier = 1.0
+        utterance.postUtteranceDelay = 0.2
+        
+        synthesizer.speak(utterance)
+    }
+    
+    private func stopSpeaking() {
+        if synthesizer.isSpeaking || isPaused {
+            synthesizer.stopSpeaking(at: .immediate)
+        }
+        isPaused = false
     }
     
     /// Performs OCR on the provided UIImage.
