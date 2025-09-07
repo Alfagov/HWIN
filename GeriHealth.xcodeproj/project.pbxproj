@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		4CCB9F3F2E6CC7F20061FDC5 /* FirebaseAI in Frameworks */ = {isa = PBXBuildFile; productRef = 4CCB9F3E2E6CC7F20061FDC5 /* FirebaseAI */; };
+		4CCB9F432E6CC8520061FDC5 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 4CCB9F422E6CC8520061FDC5 /* FirebaseAnalytics */; };
+		4CCB9F452E6CC8520061FDC5 /* FirebaseAnalyticsCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4CCB9F442E6CC8520061FDC5 /* FirebaseAnalyticsCore */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		4C33D92F2E6CBDBB00012B59 /* GeriHealth.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GeriHealth.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -36,6 +42,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4CCB9F432E6CC8520061FDC5 /* FirebaseAnalytics in Frameworks */,
+				4CCB9F452E6CC8520061FDC5 /* FirebaseAnalyticsCore in Frameworks */,
+				4CCB9F3F2E6CC7F20061FDC5 /* FirebaseAI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -78,6 +87,9 @@
 			);
 			name = GeriHealth;
 			packageProductDependencies = (
+				4CCB9F3E2E6CC7F20061FDC5 /* FirebaseAI */,
+				4CCB9F422E6CC8520061FDC5 /* FirebaseAnalytics */,
+				4CCB9F442E6CC8520061FDC5 /* FirebaseAnalyticsCore */,
 			);
 			productName = GeriHealth;
 			productReference = 4C33D92F2E6CBDBB00012B59 /* GeriHealth.app */;
@@ -107,6 +119,9 @@
 			);
 			mainGroup = 4C33D9262E6CBDBB00012B59;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				4CCB9F3D2E6CC7F20061FDC5 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4C33D9302E6CBDBB00012B59 /* Products */;
 			projectDirPath = "";
@@ -150,6 +165,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = GeriHealth/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "To take image for OCR recognition";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -180,6 +196,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = GeriHealth/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "To take image for OCR recognition";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -341,6 +358,35 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		4CCB9F3D2E6CC7F20061FDC5 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.2.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		4CCB9F3E2E6CC7F20061FDC5 /* FirebaseAI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4CCB9F3D2E6CC7F20061FDC5 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAI;
+		};
+		4CCB9F422E6CC8520061FDC5 /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4CCB9F3D2E6CC7F20061FDC5 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
+		};
+		4CCB9F442E6CC8520061FDC5 /* FirebaseAnalyticsCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4CCB9F3D2E6CC7F20061FDC5 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalyticsCore;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 4C33D9272E6CBDBB00012B59 /* Project object */;
 }
