@@ -13,6 +13,7 @@ import CoreML
 import FirebaseCore
 import FirebaseAI
 import AVFoundation
+import SwiftData
 
 struct DrugScanView: View {
     @Environment(\.modelContext) private var modelContext
@@ -22,6 +23,9 @@ struct DrugScanView: View {
     @State private var isShowingCamera = false
     @State private var medicationName = ""
     @State private var medicationData = ""
+    
+    // Schedule derived from SwiftData Drug matches
+    @State private var scheduleItems: [(day: String, time: String)] = []
     
     // Text-to-Speech
     @State private var synthesizer = AVSpeechSynthesizer()
@@ -46,8 +50,42 @@ struct DrugScanView: View {
                         self.isShowingCamera = true
                     }
                     
-                    Text("Your Schedule")
-                        .font(.headline)
+                    // Your Schedule
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Your Schedule")
+                            .font(.headline)
+                        
+                        if scheduleItems.isEmpty {
+                            Text("No schedule found for \(medicationName.isEmpty ? "this medication" : medicationName).")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 12) {
+                                    ForEach(Array(scheduleItems.enumerated()), id: \.offset) { _, item in
+                                        HStack(spacing: 6) {
+                                            Text(shortWeekdayName(for: item.day))
+                                                .font(.subheadline).bold()
+                                            Text("•")
+                                            Text(item.time)
+                                                .font(.subheadline)
+                                        }
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 10)
+                                                .fill(Color(UIColor.systemGray6))
+                                        )
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 10)
+                                                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                                        )
+                                    }
+                                }
+                                .padding(.horizontal)
+                            }
+                        }
+                    }
                     
                     Text("General Info")
                         .font(.headline)
@@ -152,6 +190,9 @@ struct DrugScanView: View {
             .onDisappear {
                 // Ensure speech stops when leaving the screen
                 stopSpeaking()
+            }
+            .onChange(of: medicationName) { _, newValue in
+                Task { await loadSchedule(for: newValue) }
             }
         }
         
@@ -313,6 +354,96 @@ struct DrugScanView: View {
                 }
             }
         }
+    
+    // MARK: - Schedule loading
+    
+    private func loadSchedule(for name: String) async {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !trimmed.isEmpty else {
+            await MainActor.run { scheduleItems = [] }
+            return
+        }
+        do {
+            let orderedSame = ComparisonResult.orderedSame
+
+            let descriptor = FetchDescriptor<Drug>(
+                predicate: #Predicate<Drug> { drug in
+                    drug.name.caseInsensitiveCompare(trimmed) == orderedSame
+                }
+            )
+            
+            let matches = try modelContext.fetch(descriptor)
+            let flattened = flattenSchedules(from: matches)
+            await MainActor.run {
+                self.scheduleItems = flattened
+            }
+        } catch {
+            await MainActor.run { self.scheduleItems = [] }
+        }
+    }
+    
+    private func flattenSchedules(from drugs: [Drug]) -> [(day: String, time: String)] {
+        // Merge all schedules from matching drugs
+        var pairs: [(String, String)] = []
+        for drug in drugs {
+            for (day, times) in drug.admnistered {
+                for t in times {
+                    pairs.append((day, t))
+                }
+            }
+        }
+        // Sort by weekday order then by time if possible
+        pairs.sort { lhs, rhs in
+            let lDay = weekdayIndex(for: lhs.0)
+            let rDay = weekdayIndex(for: rhs.0)
+            if lDay != rDay { return lDay < rDay }
+            // Try to parse times to sort; fallback to string compare
+            if let lt = parsedTime(lhs.1), let rt = parsedTime(rhs.1) {
+                return lt < rt
+            }
+            return lhs.1 < rhs.1
+        }
+        return pairs
+    }
+    
+    private func weekdayIndex(for name: String) -> Int {
+        // Support common spellings, fallback to end
+        let order = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]
+        // Also handle potential misspelling "Wensday" found in sample data
+        let normalized = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if normalized.caseInsensitiveCompare("Wensday") == .orderedSame {
+            return 3 // Wednesday index
+        }
+        if let idx = order.firstIndex(where: { $0.caseInsensitiveCompare(normalized) == .orderedSame }) {
+            return idx
+        }
+        return Int.max
+    }
+    
+    private func shortWeekdayName(for name: String) -> String {
+        let map: [String: String] = [
+            "Sunday": "Sun",
+            "Monday": "Mon",
+            "Tuesday": "Tue",
+            "Wednesday": "Wed",
+            "Wensday": "Wed",
+            "Thursday": "Thu",
+            "Friday": "Fri",
+            "Saturday": "Sat"
+        ]
+        // Default to first three chars capitalized
+        let key = map.keys.first { $0.caseInsensitiveCompare(name) == .orderedSame }
+        if let key = key, let short = map[key] { return short }
+        return String(name.prefix(3)).capitalized
+    }
+    
+    private func parsedTime(_ timeString: String) -> Date? {
+        // Parse strings like "8:00 AM" into a Date anchored to today just for sorting
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "h:mm a"
+        return formatter.date(from: timeString.trimmingCharacters(in: .whitespaces))
+    }
 }
 
 #Preview {
