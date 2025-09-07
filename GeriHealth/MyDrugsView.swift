@@ -11,6 +11,7 @@ import SwiftData
 struct MyDrugsView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var drugs: [Drug]
+    @State private var showingAddSheet = false
     
     var body: some View {
         NavigationStack {
@@ -26,6 +27,32 @@ struct MyDrugsView: View {
                    
                 }
                 .padding()
+            }
+            .navigationTitle("My Drugs")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showingAddSheet = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .accessibilityLabel("Add Drug")
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    NavigationLink(destination: ProfileView()) {
+                        Image(systemName: "person.crop.circle")
+                            .font(.title2)
+                    }
+                }
+                
+            }
+            .sheet(isPresented: $showingAddSheet) {
+                AddDrugView { name, dose, schedule in
+                    // Create and insert a new Drug using the provided initializer.
+                    let newDrug = Drug(name: name, dose: dose, admnisteredOn: schedule)
+                    modelContext.insert(newDrug)
+                }
             }
         }
     }
@@ -65,7 +92,6 @@ struct DrugView: View {
                         .padding(.bottom)
                     
                     // Create a view for each day in the schedule
-                    
                     ForEach(sortedDays, id: \.self) { day in
                         if let times = drug.admnistered[day] {
                             HStack {
@@ -133,5 +159,87 @@ struct DayScheduleView: View {
         .background(Color(.systemGray6)) // Soft background for the card
         .cornerRadius(12)
         .padding(.horizontal)
+    }
+}
+
+private struct AddDrugView: View {
+    @Environment(\.dismiss) private var dismiss
+    
+    // Basic fields
+    @State private var name: String = ""
+    @State private var dose: String = ""
+    
+    // Simple schedule builder: choose a day and add times as free text
+    @State private var selectedDay: String = "Monday"
+    @State private var timeText: String = ""
+    @State private var schedule: [String: [String]] = [:]
+    
+    let onSave: (_ name: String, _ dose: String, _ schedule: [String: [String]]) -> Void
+    
+    private let daysOfWeek = [
+        "Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"
+    ]
+    
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section(header: Text("Drug")) {
+                    TextField("Name", text: $name)
+                    TextField("Dose (e.g., 20mg)", text: $dose)
+                        .textInputAutocapitalization(.never)
+                }
+                
+                Section(header: Text("Schedule")) {
+                    Picker("Day", selection: $selectedDay) {
+                        ForEach(daysOfWeek, id: \.self) { day in
+                            Text(day).tag(day)
+                        }
+                    }
+                    HStack {
+                        TextField("Time (e.g., 8:00 AM)", text: $timeText)
+                            .textInputAutocapitalization(.never)
+                        Button("Add") {
+                            let trimmed = timeText.trimmingCharacters(in: .whitespacesAndNewlines)
+                            guard !trimmed.isEmpty else { return }
+                            var times = schedule[selectedDay] ?? []
+                            times.append(trimmed)
+                            schedule[selectedDay] = times
+                            timeText = ""
+                        }
+                    }
+                    
+                    if !schedule.isEmpty {
+                        ForEach(schedule.keys.sorted(), id: \.self) { day in
+                            if let times = schedule[day], !times.isEmpty {
+                                VStack(alignment: .leading) {
+                                    Text(day).font(.headline)
+                                    ForEach(times, id: \.self) { t in
+                                        Text("• \(t)")
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        Text("No times added yet.")
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .navigationTitle("Add Drug")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        let finalSchedule = schedule
+                        onSave(name, dose, finalSchedule)
+                        dismiss()
+                    }
+                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+                              dose.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
     }
 }

@@ -15,7 +15,6 @@ struct HomeView: View {
     
     var body: some View {
     
-        NavigationStack {
             TabView {
                 Tab("Navigate", systemImage: "house.fill") {
                     Text("Navigate")
@@ -23,6 +22,7 @@ struct HomeView: View {
                 
                 Tab("Scan", systemImage: "camera.fill") {
                     DrugScanView()
+                        .modelContext(modelContext)
                 }
                 
                 Tab("My Drugs", systemImage: "pill.fill") {
@@ -30,15 +30,8 @@ struct HomeView: View {
                         .modelContext(modelContext)
                 }
             }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    NavigationLink(destination: ProfileView()) {
-                        Image(systemName: "person.crop.circle")
-                            .font(.title2)
-                    }
-                }
-            }
-        }
+            
+        
     }
 }
 

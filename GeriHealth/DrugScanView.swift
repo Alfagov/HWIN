@@ -15,6 +15,8 @@ import FirebaseAI
 
 
 struct DrugScanView: View {
+    @Environment(\.modelContext) private var modelContext
+    
     @State private var recognizedText = "Tap 'Take Picture' to begin."
     @State private var image: UIImage?
     @State private var isShowingCamera = false
@@ -74,6 +76,15 @@ struct DrugScanView: View {
                 Spacer()
             }
             .navigationTitle("Scan")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    NavigationLink(destination: ProfileView()) {
+                        Image(systemName: "person.crop.circle")
+                            .font(.title2)
+                    }
+                }
+                
+            }
             .fullScreenCover(isPresented: $isShowingCamera) {
                 CameraView(
                     selectedImage: $image,
