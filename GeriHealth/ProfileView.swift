@@ -8,26 +8,29 @@
 import SwiftUI
 import PhotosUI
 import MapKit
+import SwiftData
 
 struct ProfileView: View {
-    // State for user's personal information
-    @State private var firstName: String = "John"
-    @State private var lastName: String = "Appleseed"
-    @State private var birthDate: Date = Calendar.current.date(from: DateComponents(year: 1945, month: 5, day: 20)) ?? Date()
-    @State private var location: String = "Cupertino, CA"
-    @State private var isShowingAddressPicker = false
+    @Environment(\.modelContext) private var modelContext
+    @Query private var users: [UserModel]
     
-    // State for the Photos picker
+    // Keep a reference to the single user model we are editing
+    @State private var user: UserModel?
+    
+    // State for the Photos picker (image is not yet part of the model)
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var profileImageData: Data?
-
+    
     // Computed property to calculate age from the birth date
-    private var age: Int {
+    private var computedAge: Int {
+        guard let dob = user?.dateOfBirth else { return 0 }
         let calendar = Calendar.current
-        let ageComponents = calendar.dateComponents([.year], from: birthDate, to: Date())
+        let ageComponents = calendar.dateComponents([.year], from: dob, to: Date())
         return ageComponents.year ?? 0
     }
-        
+    
+    @State private var isShowingAddressPicker = false
+    
     var body: some View {
         NavigationView {
             ScrollView {
@@ -57,18 +60,27 @@ struct ProfileView: View {
                         Task {
                             if let data = try? await selectedPhoto?.loadTransferable(type: Data.self) {
                                 profileImageData = data
+                                // If you later add an image property to UserModel, assign and persist here.
                             }
                         }
                     }
                     
-                    Text("\(age)")
+                    Text("\(computedAge)")
                         .foregroundColor(.black)
                         .font(.headline)
                     
                     Form {
                         Section(header: Text("Personal Information")) {
-                            TextField("First Name", text: $firstName)
-                            TextField("Last Name", text: $lastName)
+                            TextField("First Name", text: Binding(
+                                get: { user?.name ?? "" },
+                                set: { newValue in user?.name = newValue }
+                            ))
+                            
+                            TextField("Last Name", text: Binding(
+                                get: { user?.surname ?? "" },
+                                set: { newValue in user?.surname = newValue }
+                            ))
+                            
                             Button(action: {
                                 isShowingAddressPicker.toggle()
                             }) {
@@ -76,7 +88,7 @@ struct ProfileView: View {
                                     Text("Location")
                                         .foregroundColor(.primary)
                                     Spacer()
-                                    Text(location)
+                                    Text(user?.location ?? "")
                                         .foregroundColor(.gray)
                                         .multilineTextAlignment(.trailing)
                                 }
@@ -84,7 +96,18 @@ struct ProfileView: View {
                         }
                         
                         Section(header: Text("Details")) {
-                            DatePicker("Date of Birth", selection: $birthDate, displayedComponents: .date)
+                            DatePicker(
+                                "Date of Birth",
+                                selection: Binding(
+                                    get: { user?.dateOfBirth ?? Date() },
+                                    set: { newDate in
+                                        user?.dateOfBirth = newDate
+                                        // Keep age in sync with dateOfBirth if you want to store it
+                                        user?.age = Self.calculateAge(from: newDate)
+                                    }
+                                ),
+                                displayedComponents: .date
+                            )
                         }
                     }
                     .frame(height: 500) // Adjust height to prevent excessive scrolling
@@ -97,14 +120,54 @@ struct ProfileView: View {
             .navigationTitle("My Profile")
             .background(Color(.systemGroupedBackground))
             .sheet(isPresented: $isShowingAddressPicker) {
-                AddressPickerView(location: $location)
+                AddressPickerView(location: Binding(
+                    get: { user?.location ?? "" },
+                    set: { newValue in user?.location = newValue }
+                ))
+            }
+            .onAppear {
+                ensureUser()
             }
         }
+    }
+    
+    private func ensureUser() {
+        if let existing = users.first {
+            user = existing
+        } else {
+            // Create a default user if none exists
+            let defaultDOB = Calendar.current.date(from: DateComponents(year: 1945, month: 5, day: 20)) ?? Date()
+            let newUser = UserModel(
+                name: "John",
+                surname: "Appleseed",
+                dateOfBirth: defaultDOB,
+                age: Self.calculateAge(from: defaultDOB),
+                location: "Cupertino, CA"
+            )
+            modelContext.insert(newUser)
+            user = newUser
+        }
+    }
+    
+    private static func calculateAge(from date: Date) -> Int {
+        let calendar = Calendar.current
+        let ageComponents = calendar.dateComponents([.year], from: date, to: Date())
+        return ageComponents.year ?? 0
     }
 }
 
 #Preview {
-    ProfileView()
+    // In-memory model container for preview
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: Schema([
+        UserModel.self
+    ]), configurations: config)
+    // Seed a user for preview
+    let defaultDOB = Calendar.current.date(from: DateComponents(year: 1945, month: 5, day: 20)) ?? Date()
+    let previewUser = UserModel(name: "John", surname: "Appleseed", dateOfBirth: defaultDOB, age: 80, location: "Cupertino, CA")
+    container.mainContext.insert(previewUser)
+    return ProfileView()
+        .modelContainer(container)
 }
 
 struct AddressPickerView: View {
