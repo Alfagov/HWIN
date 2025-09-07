@@ -74,14 +74,19 @@ struct DrugScanView: View {
                     }
                     .padding(.horizontal)
                     
-                    TextEditor(text: $medicationData)
-                        .frame(height: 150)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.gray.opacity(0.5), lineWidth: 1)
-                        )
-                        .shadow(radius: 5)
+                    // Read-only medication data
+                    ScrollView {
+                        Text(medicationData)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(8)
+                    }
+                    .frame(height: 150)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.gray.opacity(0.5), lineWidth: 1)
+                    )
+                    .shadow(radius: 5)
                 } else {
                     RoundedRectangle(cornerRadius: 12)
                         .fill(Color(UIColor.systemGray6))
